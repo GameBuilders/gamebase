@@ -205,22 +205,28 @@ def build(ctx):
         stlibpath.append(sfml_node.abspath() + '/extlibs/libs-mingw/x86/')
         libs.extend(['opengl32', 'Gdi32', 'Winmm'])
 
-    ctx.program(
-        source       = 'main.cpp',
-        target       = 'game',
-        use          = ['box2d', 'sfgui', 'sfml', 'freetype', 'glew'],
-        uselib       = uselibs,
+    targets = [
+        ('game', 'main.cpp'),
+        ('example', 'example/main.cpp')
+    ]
 
-        defines      = defines,
+    for target in targets:
+        ctx.program(
+            source       = target[1],
+            target       = target[0],
+            use          = ['box2d', 'sfgui', 'sfml', 'freetype', 'glew'],
+            uselib       = uselibs,
 
-        includes     = includes,
+            defines      = defines,
 
-        lib          = libs,
+            includes     = includes,
 
-        stlib        = stlibs,
-        stlibpath    = stlibpath,
+            lib          = libs,
 
-        linkflags    = ['-static-libstdc++', '-static-libgcc', '-s'],
+            stlib        = stlibs,
+            stlibpath    = stlibpath,
 
-        cxxflags     = ['-Werror', '-Wall', '-O3', '--std=gnu++11']
-    )
+            linkflags    = ['-static-libstdc++', '-static-libgcc', '-s'],
+
+            cxxflags     = ['-Werror', '-Wall', '-O3', '--std=gnu++11']
+        )
