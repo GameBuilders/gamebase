@@ -14,10 +14,12 @@ For OS X, good luck. I'd love your feedback, but I have no OS X machine to test 
 
 # Compile
 Simply run this in a console with the game framework folder as the current working directory:
-Code:
+
+```bash
 python waf configure
 python waf get_deps
 python waf build
+```
 
 The first command checks your system for the required libraries and compilers.
 The second command downloads and extracts various libraries for static linking (e.g. SFML, freetype, etc...).
