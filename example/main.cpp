@@ -5,6 +5,7 @@
  */
 
 #include <cstdlib>
+#include <sstream>
 
 // Include the SFML and Box2D headers
 #include <SFML/Graphics.hpp>
@@ -28,6 +29,9 @@ double randRange(double mn, double mx)
 // Converstion factor between radians and degrees. 1 radian = 180 / pi degrees
 #define RADIAN_TO_DEGREE 57.2957795131
 
+// Number of balls to play with
+#define BALL_COUNT 100
+
 struct Shape
 {
     float centerX, centerY;
@@ -44,12 +48,22 @@ struct Circle : public Shape
     float radius;
 };
 
+struct Text : public Shape
+{
+    std::string text;
+};
+
 /**
  * Creates and renders shapes on behalf of other objects
  */
 class ShapeRenderer
 {
 public:
+    ShapeRenderer()
+    {
+        m_font.loadFromFile("DejaVuSans.ttf");
+    }
+
     Box * addBox(float centerX, float centerY, float halfWidth, float halfHeight)
     {
         Box* b = new Box();
@@ -71,6 +85,15 @@ public:
         return c;
     }
 
+    Text * addText(float centerX, float centerY)
+    {
+        Text* t = new Text();
+        t->centerX = centerX;
+        t->centerY = centerY;
+        m_textList.push_back(t);
+        return t;
+    }
+
     void renderShapes(sf::RenderWindow& window)
     {
         for (std::vector<Box*>::iterator it = m_boxList.begin(); it != m_boxList.end(); ++it) {
@@ -90,10 +113,22 @@ public:
             shape.setFillColor(sf::Color(100, 250, 50));
             window.draw(shape);
         }
+
+        for (std::vector<Text*>::iterator it = m_textList.begin(); it != m_textList.end(); ++it) {
+            sf::Text shape((*it)->text, m_font);
+            sf::FloatRect bounds = shape.getGlobalBounds();
+            shape.setPosition((*it)->centerX * FACTOR - bounds.width / 2,
+                              (*it)->centerY * FACTOR - bounds.height / 2);
+            shape.setRotation((*it)->rotation * RADIAN_TO_DEGREE);
+            shape.setColor(sf::Color(100, 250, 50));
+            window.draw(shape);
+        }
     }
 private:
+    sf::Font m_font;
     std::vector<Box*> m_boxList;
     std::vector<Circle*> m_circleList;
+    std::vector<Text*> m_textList;
 };
 
 /**
@@ -116,6 +151,43 @@ struct FixtureUserData
     Shape * shape;
 };
 
+struct BodyUserData
+{
+    bool isBall;
+};
+
+class BallQueryCallback : public b2QueryCallback
+{
+private:
+    const b2Shape& m_shape;
+    unsigned m_count;
+public:
+    BallQueryCallback(const b2Shape& shape) : m_shape(shape), m_count(0)
+    {
+    }
+
+    unsigned getCount()
+    {
+        return m_count;
+    }
+
+    virtual bool ReportFixture(b2Fixture* fixture) override
+    {
+        b2Transform identity;
+        identity.SetIdentity();
+        b2Body * body = fixture->GetBody();
+        BodyUserData * data = (BodyUserData*)body->GetUserData();
+        if (data != NULL)
+        {
+            if (b2TestOverlap(fixture->GetShape(), 0, &m_shape, 0, body->GetTransform(), identity))
+            {
+                m_count++;
+            }
+        }
+        return true;
+    }
+};
+
 /**
  * A state that controls the game
  */
@@ -123,11 +195,13 @@ class GameState : public State
 {
 private:
     ShapeRenderer * m_renderer;
+    Text * m_scoreText;
 
     b2World * m_physicsWorld;
     double m_accumTime;
 
     // Gameplay Data
+    b2PolygonShape m_goalShape;
     b2Body * m_ropeAnchor;
     b2RevoluteJoint * m_clawJoint;
     b2RopeJoint * m_ropeJoint;
@@ -138,6 +212,9 @@ public:
     {
         // Construct a physical world with gravity
         m_physicsWorld = new b2World(b2Vec2(0, 10));
+
+        // Create text for showing the score
+        m_scoreText = m_renderer->addText(8.0f, 8.0f);
 
         // Add balls to demonstrate the physics are working
         spawnBalls();
@@ -153,6 +230,8 @@ public:
                  7.0f, 5.0f); // middle slope
         addBox(10.0f, 10.1f, 5.0f, 10.0f); // middle right post
         addBox(15.9f, 16.0f, 0.0f, 10.0f); // right post
+
+        m_goalShape.SetAsBox(3.0f, 2.5f, b2Vec2(13.0f, 7.5f), 0.0f);
     }
 
     b2Body * addBox(float minX, float maxX, float minY, float maxY, b2BodyType type = b2_staticBody)
@@ -261,7 +340,7 @@ public:
         float minX = 0.8f, maxX = minX + 4.0f;
         float minY = 0.2f, maxY = minY + 6.0f;
         float minRadius = 0.1f, maxRadius = 0.3f;
-        for (int ballIndex = 0; ballIndex < 100; ballIndex++)
+        for (int ballIndex = 0; ballIndex < BALL_COUNT; ballIndex++)
         {
             // 1. Make Shape
             b2BodyDef ballBodyDef;
@@ -275,6 +354,10 @@ public:
 
             // 3. Attach Shape to Body with Fixture
             b2Body * ballBody = m_physicsWorld->CreateBody(&ballBodyDef);
+            ballBody->SetUserData(new BodyUserData
+                {
+                    .isBall = true
+                });
             b2Fixture * ballFixture = ballBody->CreateFixture(&ballShape, 1.0f);
             ballFixture->SetRestitution(0.5f);
             ballFixture->SetFriction(0.2f);
@@ -294,6 +377,17 @@ public:
     void setClawDirection(const b2Vec2& clawDirection)
     {
         m_clawDirection = clawDirection;
+    }
+
+    unsigned getBallInGoalCount()
+    {
+        BallQueryCallback callback(m_goalShape);
+        b2AABB shapeAABB;
+        b2Transform identity;
+        identity.SetIdentity();
+        m_goalShape.ComputeAABB(&shapeAABB, identity, 0);
+        m_physicsWorld->QueryAABB(&callback, shapeAABB);
+        return callback.getCount();
     }
 
     virtual void update(double dt) override
@@ -340,6 +434,7 @@ public:
         clawDelta *= dt;
         clawDelta *= 3;
         m_ropeJoint->SetMaxLength(m_ropeJoint->GetMaxLength() + clawDelta.y);
+        // Ensure the rope is between specific lengths
         if (m_ropeJoint->GetMaxLength() < 0.1f)
         {
             m_ropeJoint->SetMaxLength(0.1f);
@@ -361,6 +456,10 @@ public:
         {
             m_ropeAnchor->SetTransform(b2Vec2(15.9f, achorPos.y), 0.0f);
         }
+
+        std::stringstream scoreString;
+        scoreString << getBallInGoalCount() << "/" << BALL_COUNT;
+        m_scoreText->text = scoreString.str();
     }
 };
 
