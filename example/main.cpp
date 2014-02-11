@@ -25,6 +25,9 @@ double randRange(double mn, double mx)
 // Conversion factor between Box2D units and pixels. 1 Box2D unit = 50 pixels
 #define FACTOR 50
 
+// Converstion factor between radians and degrees. 1 radian = 180 / pi degrees
+#define RADIAN_TO_DEGREE 57.2957795131
+
 struct Shape
 {
     float centerX, centerY;
@@ -49,46 +52,48 @@ class ShapeRenderer
 public:
     Box * addBox(float centerX, float centerY, float halfWidth, float halfHeight)
     {
-		Box* b = new Box();
-		b->centerX = centerX;
-		b->centerY = centerY;
-		b->halfWidth = halfWidth;
-		b->halfHeight = halfHeight;
+        Box* b = new Box();
+        b->centerX = centerX;
+        b->centerY = centerY;
+        b->halfWidth = halfWidth;
+        b->halfHeight = halfHeight;
         m_boxList.push_back(b);
-		return b;
+        return b;
     }
 
     Circle * addCircle(float centerX, float centerY, float radius)
     {
         Circle* c = new Circle();
-		c->centerX = centerX;
-		c->centerY = centerY;
-		c->radius = radius;
+        c->centerX = centerX;
+        c->centerY = centerY;
+        c->radius = radius;
         m_circleList.push_back(c);
         return c;
     }
 
-	void renderShapes(sf::RenderWindow& window)
-	{
-		for (std::vector<Box*>::iterator it = m_boxList.begin(); it != m_boxList.end(); ++it) {
-			sf::RectangleShape shape(sf::Vector2f((*it)->halfWidth * 2 * FACTOR, (*it)->halfHeight * 2 * FACTOR));
-			shape.setOrigin((*it)->halfWidth * FACTOR, (*it)->halfHeight * FACTOR);
-			shape.setPosition((*it)->centerX * FACTOR, (*it)->centerY * FACTOR);
-			shape.setFillColor(sf::Color(100, 250, 50));
-			window.draw(shape);
-		}
+    void renderShapes(sf::RenderWindow& window)
+    {
+        for (std::vector<Box*>::iterator it = m_boxList.begin(); it != m_boxList.end(); ++it) {
+            sf::RectangleShape shape(sf::Vector2f((*it)->halfWidth * 2 * FACTOR, (*it)->halfHeight * 2 * FACTOR));
+            shape.setOrigin((*it)->halfWidth * FACTOR, (*it)->halfHeight * FACTOR);
+            shape.setPosition((*it)->centerX * FACTOR, (*it)->centerY * FACTOR);
+            shape.setRotation((*it)->rotation * RADIAN_TO_DEGREE);
+            shape.setFillColor(sf::Color(100, 250, 50));
+            window.draw(shape);
+        }
 
-		for (std::vector<Circle*>::iterator it = m_circleList.begin(); it != m_circleList.end(); ++it) {
-			sf::CircleShape shape((*it)->radius * FACTOR);
-			shape.setOrigin((*it)->radius * FACTOR, (*it)->radius * FACTOR);
-			shape.setPosition((*it)->centerX * FACTOR, (*it)->centerY * FACTOR);
-			shape.setFillColor(sf::Color(100, 250, 50));
-			window.draw(shape);
-		}
-	}
+        for (std::vector<Circle*>::iterator it = m_circleList.begin(); it != m_circleList.end(); ++it) {
+            sf::CircleShape shape((*it)->radius * FACTOR);
+            shape.setOrigin((*it)->radius * FACTOR, (*it)->radius * FACTOR);
+            shape.setPosition((*it)->centerX * FACTOR, (*it)->centerY * FACTOR);
+            shape.setRotation((*it)->rotation * RADIAN_TO_DEGREE);
+            shape.setFillColor(sf::Color(100, 250, 50));
+            window.draw(shape);
+        }
+    }
 private:
-	std::vector<Box*> m_boxList;
-	std::vector<Circle*> m_circleList;
+    std::vector<Box*> m_boxList;
+    std::vector<Circle*> m_circleList;
 };
 
 /**
@@ -131,7 +136,11 @@ public:
         spawnBalls();
 
         // Add a ground box to keep the circles from falling forever
-        addStaticBox(0.0f, 10.0f, 10.0f, 10.1f);
+        addStaticBox(0.0f, 16.0f, 10.0f, 10.1f);
+        addStaticBox(0.0f, 0.1f, 00.0f, 10.0f);
+        addStaticBox(6.0f, 6.1f, 5.0f, 10.0f);
+        addStaticBox(10.0f, 10.1f, 5.0f, 10.0f);
+        addStaticBox(15.9f, 16.0f, 0.0f, 10.0f);
     }
 
     void addStaticBox(float minX, float maxX, float minY, float maxY)
