@@ -173,7 +173,7 @@ public:
         b2Body * boxBody = m_physicsWorld->CreateBody(&boxBodyDef);
         b2FixtureDef boxFixtureDef;
         boxFixtureDef.shape = &boxShape;
-        boxFixtureDef.density = 100.0f;
+        boxFixtureDef.density = 50.0f;
         b2Fixture * boxFixture = boxBody->CreateFixture(&boxFixtureDef);
         boxFixture->SetUserData(new FixtureUserData
             {
@@ -189,8 +189,8 @@ public:
         float length = b2Vec2(x2 - x1, y2 - y1).Length();
         float thickness = 0.1f;
         b2Body * boxBody = addBox(centerX - length    / 2, centerX + length    / 2,
-                                        centerY - thickness / 2, centerY + thickness / 2,
-                                        type);
+                                  centerY - thickness / 2, centerY + thickness / 2,
+                                  type);
         float angle = atan2(y2 - y1, x2 - x1);
         boxBody->SetTransform(boxBody->GetPosition(), angle);
         return boxBody;
@@ -198,8 +198,8 @@ public:
 
     void addClaw()
     {
-        float clawHeight = 1.5f;
-        float clawWidth = 1.0f;
+        float clawHeight = 2.0f;
+        float clawWidth = 1.5f;
         float x = 2.0f, y = 2.0f;
 
         m_ropeAnchor = addBox(x - 0.05, x + 0.1f, 0.0f, 0.1f, b2_kinematicBody);
@@ -209,21 +209,25 @@ public:
         addSlope(x, x - clawWidth  / 2,
                  y, y + clawHeight / 2,
                  b2_dynamicBody); // Left Upper Arm
+        leftUpperArm->SetAngularDamping(0.0f);
 
         b2Body * rightUpperArm =
         addSlope(x, x + clawWidth  / 2,
                  y, y + clawHeight / 2,
                  b2_dynamicBody); // Right Upper Arm
+        rightUpperArm->SetAngularDamping(0.0f);
 
         b2Body * leftLowerArm =
         addSlope(x - clawWidth  / 2, x,
                  y + clawHeight / 2, y + clawHeight,
                  b2_dynamicBody); // Left Lower Arm
+        leftLowerArm->SetAngularDamping(0.0f);
 
         b2Body * rightLowerArm =
         addSlope(x + clawWidth  / 2, x,
                  y + clawHeight / 2, y + clawHeight,
                  b2_dynamicBody); // Right Lower Arm
+        rightLowerArm->SetAngularDamping(0.0f);
 
         // Setup claw joints
         b2WeldJointDef leftElbow;
@@ -273,7 +277,7 @@ public:
             b2Body * ballBody = m_physicsWorld->CreateBody(&ballBodyDef);
             b2Fixture * ballFixture = ballBody->CreateFixture(&ballShape, 1.0f);
             ballFixture->SetRestitution(0.5f);
-            ballFixture->SetFriction(0.5f);
+            ballFixture->SetFriction(0.2f);
             ballFixture->SetUserData(new FixtureUserData
                 {
                     .shape = m_renderer->addCircle(0, 0, ballShape.m_radius)
@@ -329,13 +333,34 @@ public:
         }
 
         // Update Gameplayer Data
-        m_clawJoint->SetMotorSpeed(m_openClaw ? -1.0f : 1.0f);
+
+        m_clawJoint->SetMotorSpeed(m_openClaw ? -4.0f : 4.0f);
 
         b2Vec2 clawDelta = m_clawDirection;
         clawDelta *= dt;
+        clawDelta *= 3;
         m_ropeJoint->SetMaxLength(m_ropeJoint->GetMaxLength() + clawDelta.y);
+        if (m_ropeJoint->GetMaxLength() < 0.1f)
+        {
+            m_ropeJoint->SetMaxLength(0.1f);
+        }
+        if (m_ropeJoint->GetMaxLength() > 10.0f)
+        {
+            m_ropeJoint->SetMaxLength(10.0f);
+        }
 
-        m_ropeAnchor->SetLinearVelocity(b2Vec2(m_clawDirection.x * 3, 0.0f));
+        b2Vec2 achorPos = m_ropeAnchor->GetPosition();
+        achorPos.x += clawDelta.x;
+        m_ropeAnchor->SetTransform(achorPos, 0.0f);
+        // Ensure the anchor does not go out of bounds
+        if (achorPos.x < 0.1f)
+        {
+            m_ropeAnchor->SetTransform(b2Vec2(0.1f, achorPos.y), 0.0f);
+        }
+        if (achorPos.x > 15.9f)
+        {
+            m_ropeAnchor->SetTransform(b2Vec2(15.9f, achorPos.y), 0.0f);
+        }
     }
 };
 
