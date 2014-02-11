@@ -8,6 +8,9 @@
 #include <SFML/Graphics.hpp>
 #include <Box2D/Box2D.h>
 
+// Conversion factor between Box2D units and pixels. 1 Box2D unit = 50 pixels
+#define FACTOR 50
+
 struct Box
 {
     float centerX, centerY;
@@ -26,18 +29,48 @@ struct Circle
 class ShapeRenderer
 {
 public:
-    Box * addBox()
+    Box * addBox(float centerX, float centerY, float halfWidth, float halfHeight)
     {
-        // I need an implementation
-        return NULL;
+		Box* b = new Box();
+		b->centerX = centerX;
+		b->centerY = centerY;
+		b->halfWidth = halfWidth;
+		b->halfHeight = halfHeight;
+        m_boxList.push_back(b);
+		return b;
     }
 
-    Circle * addCircle()
+    Circle * addCircle(float centerX, float centerY, float radius)
     {
-        // I need an implementation
-        return NULL;
+        Circle* c = new Circle();
+		c->centerX = centerX;
+		c->centerY = centerY;
+		c->radius = radius;
+        m_circleList.push_back(c);
+        return c;
     }
-
+	
+	void renderShapes(sf::RenderWindow& window)
+	{
+		for (std::vector<Box*>::iterator it = m_boxList.begin(); it != m_boxList.end(); ++it) {
+			sf::RectangleShape shape(sf::Vector2f((*it)->halfWidth * 2, (*it)->halfHeight * 2));
+			shape.setOrigin((*it)->halfWidth, (*it)->halfHeight);
+			shape.setPosition((*it)->centerX, (*it)->centerY);
+			shape.setFillColor(sf::Color(100, 250, 50));
+			window.draw(shape);
+		}
+		
+		for (std::vector<Circle*>::iterator it = m_circleList.begin(); it != m_circleList.end(); ++it) {
+			sf::CircleShape shape((*it)->radius);
+			shape.setOrigin((*it)->radius, (*it)->radius);
+			shape.setPosition((*it)->centerX, (*it)->centerY);
+			shape.setFillColor(sf::Color(100, 250, 50));
+			window.draw(shape);
+		}
+	}
+private:
+	std::vector<Box*> m_boxList;
+	std::vector<Circle*> m_circleList;
 };
 
 /**
@@ -88,11 +121,7 @@ public:
         m_testBody = m_physicsWorld->CreateBody(&testBodyDef);
         m_testBody->CreateFixture(&testCircleShape, 1.0f);
 
-        m_testCircleRender = m_renderer->addCircle();
-        if (m_testCircleRender != NULL)
-        {
-            m_testCircleRender->radius = testCircleShape.m_radius;
-        }
+        m_testCircleRender = m_renderer->addCircle(100, 200, testCircleShape.m_radius * FACTOR);
 
         // Add a ground box to keep the circle from falling forever
         b2PolygonShape groundShape;
@@ -105,15 +134,7 @@ public:
         m_groundBody = m_physicsWorld->CreateBody(&groundBodyDef);
         m_groundBody->CreateFixture(&groundShape, 0.0f);
 
-        m_groundBoxRender = m_renderer->addBox();
-        if (m_groundBoxRender != NULL)
-        {
-            m_groundBoxRender->centerX = 0.0f;
-            m_groundBoxRender->centerY = 0.0f;
-            m_groundBoxRender->halfWidth = 10.0f;
-            m_groundBoxRender->halfHeight = 1.0f;
-        }
-
+        m_groundBoxRender = m_renderer->addBox(400, 200, 100, 60);
     }
 
     virtual void update(double dt) override
@@ -139,13 +160,8 @@ public:
     }
 };
 
-
-// Function prototypes
-void drawShapes(sf::RenderWindow& window);
-
 // Program entry point
 int main() {
-
     // Create the SFML window
     sf::RenderWindow window(sf::VideoMode(800, 600), "Crane Game!");
 
@@ -173,7 +189,7 @@ int main() {
         window.clear();
 
         // Render some shapes
-        drawShapes(window);
+        renderer.renderShapes(window);
 
         // Notify the window that we're ready to render
         window.display();
@@ -182,12 +198,4 @@ int main() {
     delete state;
 
     return 0;
-}
-
-// Draws some shapes!
-void drawShapes(sf::RenderWindow& window) {
-    // Draw a circle to the window
-    sf::CircleShape shape(50);
-    shape.setFillColor(sf::Color(100, 250, 50));
-    window.draw(shape);
 }
