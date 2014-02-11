@@ -4,22 +4,40 @@
  * For more advanced usage, be sure to consult the respective libraries' documentation!
  */
 
+#include <cstdlib>
+
 // Include the SFML and Box2D headers
 #include <SFML/Graphics.hpp>
 #include <Box2D/Box2D.h>
 
+// Returns a pseudo-random number between 0 and 1
+double randDouble()
+{
+    return rand() / (double)RAND_MAX;
+}
+
+// Returns a pseudo-random number in the given range
+double randRange(double mn, double mx)
+{
+    return (randDouble() * (mx - mn)) + mn;
+}
+
 // Conversion factor between Box2D units and pixels. 1 Box2D unit = 50 pixels
 #define FACTOR 50
 
-struct Box
+struct Shape
 {
     float centerX, centerY;
+    float rotation;
+};
+
+struct Box : public Shape
+{
     float halfWidth, halfHeight;
 };
 
-struct Circle
+struct Circle : public Shape
 {
-    float centerX, centerY;
     float radius;
 };
 
@@ -49,21 +67,21 @@ public:
         m_circleList.push_back(c);
         return c;
     }
-	
+
 	void renderShapes(sf::RenderWindow& window)
 	{
 		for (std::vector<Box*>::iterator it = m_boxList.begin(); it != m_boxList.end(); ++it) {
-			sf::RectangleShape shape(sf::Vector2f((*it)->halfWidth * 2, (*it)->halfHeight * 2));
-			shape.setOrigin((*it)->halfWidth, (*it)->halfHeight);
-			shape.setPosition((*it)->centerX, (*it)->centerY);
+			sf::RectangleShape shape(sf::Vector2f((*it)->halfWidth * 2 * FACTOR, (*it)->halfHeight * 2 * FACTOR));
+			shape.setOrigin((*it)->halfWidth * FACTOR, (*it)->halfHeight * FACTOR);
+			shape.setPosition((*it)->centerX * FACTOR, (*it)->centerY * FACTOR);
 			shape.setFillColor(sf::Color(100, 250, 50));
 			window.draw(shape);
 		}
-		
+
 		for (std::vector<Circle*>::iterator it = m_circleList.begin(); it != m_circleList.end(); ++it) {
-			sf::CircleShape shape((*it)->radius);
-			shape.setOrigin((*it)->radius, (*it)->radius);
-			shape.setPosition((*it)->centerX, (*it)->centerY);
+			sf::CircleShape shape((*it)->radius * FACTOR);
+			shape.setOrigin((*it)->radius * FACTOR, (*it)->radius * FACTOR);
+			shape.setPosition((*it)->centerX * FACTOR, (*it)->centerY * FACTOR);
 			shape.setFillColor(sf::Color(100, 250, 50));
 			window.draw(shape);
 		}
@@ -88,6 +106,11 @@ public:
     virtual void update(double dt) = 0;
 };
 
+struct FixtureUserData
+{
+    Shape * shape;
+};
+
 /**
  * A state that controls the game
  */
@@ -98,43 +121,70 @@ private:
 
     b2World * m_physicsWorld;
     double m_accumTime;
-
-    b2Body * m_testBody;
-    Circle * m_testCircleRender;
-
-    b2Body * m_groundBody;
-    Box * m_groundBoxRender;
 public:
     GameState(ShapeRenderer * renderer) : m_renderer(renderer), m_accumTime(0.0)
     {
-        m_physicsWorld = new b2World(b2Vec2(0, -10));
+        // Construct a physical world with gravity
+        m_physicsWorld = new b2World(b2Vec2(0, 10));
 
-        // Add a simple circle to demonstrate the physics are working
-        b2CircleShape testCircleShape;
-        testCircleShape.m_p.SetZero();
-        testCircleShape.m_radius = 1.0f;
+        // Add balls to demonstrate the physics are working
+        spawnBalls();
 
-        b2BodyDef testBodyDef;
-        testBodyDef.position.SetZero();
-        testBodyDef.type = b2_dynamicBody;
+        // Add a ground box to keep the circles from falling forever
+        addStaticBox(0.0f, 10.0f, 10.0f, 10.1f);
+    }
 
-        m_testBody = m_physicsWorld->CreateBody(&testBodyDef);
-        m_testBody->CreateFixture(&testCircleShape, 1.0f);
+    void addStaticBox(float minX, float maxX, float minY, float maxY)
+    {
+        float width = maxX - minX;
+        float height = maxY - minY;
 
-        m_testCircleRender = m_renderer->addCircle(100, 200, testCircleShape.m_radius * FACTOR);
+        // 1. Make Shape
+        b2PolygonShape boxShape;
+        boxShape.SetAsBox(width / 2, height / 2);
 
-        // Add a ground box to keep the circle from falling forever
-        b2PolygonShape groundShape;
-        groundShape.SetAsBox(10.0f, 1.0f);
+        // 2. Make Body
+        b2BodyDef boxBodyDef;
+        boxBodyDef.position.Set(minX + width / 2, minY + height / 2);
+        boxBodyDef.type = b2_staticBody;
 
-        b2BodyDef groundBodyDef;
-        groundBodyDef.position.Set(0.0f, -20.0f);
-        groundBodyDef.type = b2_staticBody;
+        // 3. Attach Shape to Body with Fixture
+        b2Body * boxBody = m_physicsWorld->CreateBody(&boxBodyDef);
+        b2Fixture * boxFixture = boxBody->CreateFixture(&boxShape, 0.0f);
+        boxFixture->SetUserData(new FixtureUserData
+            {
+                .shape =  m_renderer->addBox(0, 0, width / 2, height / 2)
+            });
+    }
 
-        m_groundBody = m_physicsWorld->CreateBody(&groundBodyDef);
-        m_groundBody->CreateFixture(&groundShape, 0.0f);
+    void spawnBalls()
+    {
+        float minX = 0.8f, maxX = minX + 4.0f;
+        float minY = 0.2f, maxY = minY + 6.0f;
+        float minRadius = 0.1f, maxRadius = 0.3f;
+        for (int ballIndex = 0; ballIndex < 100; ballIndex++)
+        {
+            // 1. Make Shape
+            b2BodyDef ballBodyDef;
+            ballBodyDef.position.Set(randRange(minX, maxX), randRange(minY, maxY));
+            ballBodyDef.type = b2_dynamicBody;
 
-        m_groundBoxRender = m_renderer->addBox(400, 200, 100, 60);
+            // 2. Make Body
+            b2CircleShape ballShape;
+            ballShape.m_p.SetZero();
+            ballShape.m_radius = randRange(minRadius, maxRadius);
+
+            // 3. Attach Shape to Body with Fixture
+            b2Body * ballBody = m_physicsWorld->CreateBody(&ballBodyDef);
+            b2Fixture * ballFixture = ballBody->CreateFixture(&ballShape, 1.0f);
+            ballFixture->SetRestitution(0.5f);
+            ballFixture->SetFriction(0.5f);
+            ballFixture->SetUserData(new FixtureUserData
+                {
+                    .shape = m_renderer->addCircle(0, 0, ballShape.m_radius)
+                });
+
+        }
     }
 
     virtual void update(double dt) override
@@ -148,14 +198,29 @@ public:
             m_accumTime -= (double)worldTimeStep;
         }
 
-        // Show that the test circle is actually moving down
-        b2Vec2 bodyPos = m_testBody->GetPosition();
-        printf("%f\n", bodyPos.y);
-
-        if (m_testCircleRender != NULL)
+        // Update Fixture Data
+        b2Body * bodyList = m_physicsWorld->GetBodyList();
+        while (bodyList != NULL)
         {
-            m_testCircleRender->centerX = bodyPos.x;
-            m_testCircleRender->centerY = bodyPos.y;
+            const b2Transform& tform = bodyList->GetTransform();
+            b2Fixture * fixtureList = bodyList->GetFixtureList();
+            while (fixtureList != NULL)
+            {
+                // If this fixture has data, update it
+                FixtureUserData * fixtureData = (FixtureUserData *)fixtureList->GetUserData();
+                if (fixtureData != NULL)
+                {
+                    fixtureData->shape->centerX = tform.p.x;
+                    fixtureData->shape->centerY = tform.p.y;
+                    fixtureData->shape->rotation = tform.q.GetAngle();
+                }
+
+                // Iterate the linked list
+                fixtureList = fixtureList->GetNext();
+            }
+
+            // Iterate the linked list
+            bodyList = bodyList->GetNext();
         }
     }
 };
