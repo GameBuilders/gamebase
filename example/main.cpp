@@ -136,14 +136,15 @@ public:
         spawnBalls();
 
         // Add a ground box to keep the circles from falling forever
-        addStaticBox(0.0f, 16.0f, 10.0f, 10.1f);
-        addStaticBox(0.0f, 0.1f, 00.0f, 10.0f);
-        addStaticBox(6.0f, 6.1f, 5.0f, 10.0f);
-        addStaticBox(10.0f, 10.1f, 5.0f, 10.0f);
-        addStaticBox(15.9f, 16.0f, 0.0f, 10.0f);
+        addStaticBox(0.0f, 16.0f, 10.0f, 10.1f); // ground
+        addStaticBox(0.0f, 0.1f, 0.0f, 10.0f); // left post
+        addStaticBox(6.0f, 6.1f, 7.0f, 10.0f); // middle left post
+        addStaticSlope(6.1f, 10.0f, 5.0f, 7.0f); // middle slope
+        addStaticBox(10.0f, 10.1f, 5.0f, 10.0f); // middle right post
+        addStaticBox(15.9f, 16.0f, 0.0f, 10.0f); // right post
     }
 
-    void addStaticBox(float minX, float maxX, float minY, float maxY)
+    b2Body * addStaticBox(float minX, float maxX, float minY, float maxY)
     {
         float width = maxX - minX;
         float height = maxY - minY;
@@ -164,6 +165,19 @@ public:
             {
                 .shape =  m_renderer->addBox(0, 0, width / 2, height / 2)
             });
+        return boxBody;
+    }
+
+    b2Body * addStaticSlope(float minX, float maxX, float minY, float maxY)
+    {
+        float centerX = (maxX + minX) / 2;
+        float centerY = (maxY + minY) / 2;
+        float length = b2Vec2(maxX - minX, maxY - minY).Length();
+        float thickness = 0.1f;
+        b2Body * boxBody = addStaticBox(centerX - length / 2, centerX + length / 2, centerY - thickness / 2, centerY + thickness / 2);
+        float angle = -atan2(maxY - minY, maxX - minX);
+        boxBody->SetTransform(boxBody->GetPosition(), angle);
+        return boxBody;
     }
 
     void spawnBalls()
@@ -236,8 +250,13 @@ public:
 
 // Program entry point
 int main() {
+    // Ensure the game is different every run
+    srand(time(NULL));
+
     // Create the SFML window
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Crane Game!");
+    sf::ContextSettings settings;
+    settings.antialiasingLevel = 8;
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Crane Game!", sf::Style::Default, settings);
 
     ShapeRenderer renderer;
 
