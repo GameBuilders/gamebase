@@ -226,7 +226,7 @@ def build(ctx):
             stlib        = stlibs,
             stlibpath    = stlibpath,
 
-            linkflags    = ['-static-libstdc++', '-static-libgcc', '-s'],
+            linkflags    = ['-static-libstdc++', '-static-libgcc'],
 
-            cxxflags     = ['-Werror', '-Wall', '-O3', '--std=gnu++11']
+            cxxflags     = ['-Werror', '-Wall', '-O0', '-g', '--std=gnu++11']
         )

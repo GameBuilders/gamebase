@@ -126,6 +126,13 @@ private:
 
     b2World * m_physicsWorld;
     double m_accumTime;
+
+    // Gameplay Data
+    b2Body * m_ropeAnchor;
+    b2RevoluteJoint * m_clawJoint;
+    b2RopeJoint * m_ropeJoint;
+    bool m_openClaw = true;
+    b2Vec2 m_clawDirection = b2Vec2(0, 0);
 public:
     GameState(ShapeRenderer * renderer) : m_renderer(renderer), m_accumTime(0.0)
     {
@@ -135,16 +142,20 @@ public:
         // Add balls to demonstrate the physics are working
         spawnBalls();
 
+        // Add the claw
+        addClaw();
+
         // Add a ground box to keep the circles from falling forever
-        addStaticBox(0.0f, 16.0f, 10.0f, 10.1f); // ground
-        addStaticBox(0.0f, 0.1f, 0.0f, 10.0f); // left post
-        addStaticBox(6.0f, 6.1f, 7.0f, 10.0f); // middle left post
-        addStaticSlope(6.1f, 10.0f, 5.0f, 7.0f); // middle slope
-        addStaticBox(10.0f, 10.1f, 5.0f, 10.0f); // middle right post
-        addStaticBox(15.9f, 16.0f, 0.0f, 10.0f); // right post
+        addBox(0.0f, 16.0f, 10.0f, 10.1f); // ground
+        addBox(0.0f, 0.1f, 0.0f, 10.0f); // left post
+        addBox(6.0f, 6.1f, 7.0f, 10.0f); // middle left post
+        addSlope(6.0f, 10.1f,
+                 7.0f, 5.0f); // middle slope
+        addBox(10.0f, 10.1f, 5.0f, 10.0f); // middle right post
+        addBox(15.9f, 16.0f, 0.0f, 10.0f); // right post
     }
 
-    b2Body * addStaticBox(float minX, float maxX, float minY, float maxY)
+    b2Body * addBox(float minX, float maxX, float minY, float maxY, b2BodyType type = b2_staticBody)
     {
         float width = maxX - minX;
         float height = maxY - minY;
@@ -156,11 +167,14 @@ public:
         // 2. Make Body
         b2BodyDef boxBodyDef;
         boxBodyDef.position.Set(minX + width / 2, minY + height / 2);
-        boxBodyDef.type = b2_staticBody;
+        boxBodyDef.type = type;
 
         // 3. Attach Shape to Body with Fixture
         b2Body * boxBody = m_physicsWorld->CreateBody(&boxBodyDef);
-        b2Fixture * boxFixture = boxBody->CreateFixture(&boxShape, 0.0f);
+        b2FixtureDef boxFixtureDef;
+        boxFixtureDef.shape = &boxShape;
+        boxFixtureDef.density = 100.0f;
+        b2Fixture * boxFixture = boxBody->CreateFixture(&boxFixtureDef);
         boxFixture->SetUserData(new FixtureUserData
             {
                 .shape =  m_renderer->addBox(0, 0, width / 2, height / 2)
@@ -168,16 +182,74 @@ public:
         return boxBody;
     }
 
-    b2Body * addStaticSlope(float minX, float maxX, float minY, float maxY)
+    b2Body * addSlope(float x1, float x2, float y1, float y2, b2BodyType type = b2_staticBody)
     {
-        float centerX = (maxX + minX) / 2;
-        float centerY = (maxY + minY) / 2;
-        float length = b2Vec2(maxX - minX, maxY - minY).Length();
+        float centerX = (x2 + x1) / 2;
+        float centerY = (y2 + y1) / 2;
+        float length = b2Vec2(x2 - x1, y2 - y1).Length();
         float thickness = 0.1f;
-        b2Body * boxBody = addStaticBox(centerX - length / 2, centerX + length / 2, centerY - thickness / 2, centerY + thickness / 2);
-        float angle = -atan2(maxY - minY, maxX - minX);
+        b2Body * boxBody = addBox(centerX - length    / 2, centerX + length    / 2,
+                                        centerY - thickness / 2, centerY + thickness / 2,
+                                        type);
+        float angle = atan2(y2 - y1, x2 - x1);
         boxBody->SetTransform(boxBody->GetPosition(), angle);
         return boxBody;
+    }
+
+    void addClaw()
+    {
+        float clawHeight = 1.5f;
+        float clawWidth = 1.0f;
+        float x = 2.0f, y = 2.0f;
+
+        m_ropeAnchor = addBox(x - 0.05, x + 0.1f, 0.0f, 0.1f, b2_kinematicBody);
+
+        // Create the claw bodies
+        b2Body * leftUpperArm =
+        addSlope(x, x - clawWidth  / 2,
+                 y, y + clawHeight / 2,
+                 b2_dynamicBody); // Left Upper Arm
+
+        b2Body * rightUpperArm =
+        addSlope(x, x + clawWidth  / 2,
+                 y, y + clawHeight / 2,
+                 b2_dynamicBody); // Right Upper Arm
+
+        b2Body * leftLowerArm =
+        addSlope(x - clawWidth  / 2, x,
+                 y + clawHeight / 2, y + clawHeight,
+                 b2_dynamicBody); // Left Lower Arm
+
+        b2Body * rightLowerArm =
+        addSlope(x + clawWidth  / 2, x,
+                 y + clawHeight / 2, y + clawHeight,
+                 b2_dynamicBody); // Right Lower Arm
+
+        // Setup claw joints
+        b2WeldJointDef leftElbow;
+        leftElbow.Initialize(leftUpperArm, leftLowerArm, b2Vec2(x, y + clawHeight / 2));
+        m_physicsWorld->CreateJoint(&leftElbow);
+
+        b2WeldJointDef rightElbow;
+        rightElbow.Initialize(rightUpperArm, rightLowerArm, b2Vec2(x + clawWidth, y + clawHeight / 2));
+        m_physicsWorld->CreateJoint(&rightElbow);
+
+        b2RevoluteJointDef clawJontDef;
+        clawJontDef.Initialize(leftUpperArm, rightUpperArm, b2Vec2(x, y));
+        clawJontDef.enableMotor = true;
+        clawJontDef.maxMotorTorque = 500.0f;
+        clawJontDef.enableLimit = true;
+        clawJontDef.lowerAngle = -1.2;
+        clawJontDef.upperAngle = 0;
+        m_clawJoint = (b2RevoluteJoint *)m_physicsWorld->CreateJoint(&clawJontDef);
+
+        b2RopeJointDef clawRopeDef;
+        clawRopeDef.bodyA = m_ropeAnchor;
+        clawRopeDef.bodyB = leftUpperArm;
+        clawRopeDef.maxLength = 2.0f;
+        clawRopeDef.localAnchorA.SetZero();
+        clawRopeDef.localAnchorB = clawRopeDef.bodyB->GetLocalPoint(b2Vec2(x, y));
+        m_ropeJoint = (b2RopeJoint *)m_physicsWorld->CreateJoint(&clawRopeDef);
     }
 
     void spawnBalls()
@@ -208,6 +280,16 @@ public:
                 });
 
         }
+    }
+
+    void toggleClaw()
+    {
+        m_openClaw = !m_openClaw;
+    }
+
+    void setClawDirection(const b2Vec2& clawDirection)
+    {
+        m_clawDirection = clawDirection;
     }
 
     virtual void update(double dt) override
@@ -245,6 +327,15 @@ public:
             // Iterate the linked list
             bodyList = bodyList->GetNext();
         }
+
+        // Update Gameplayer Data
+        m_clawJoint->SetMotorSpeed(m_openClaw ? -1.0f : 1.0f);
+
+        b2Vec2 clawDelta = m_clawDirection;
+        clawDelta *= dt;
+        m_ropeJoint->SetMaxLength(m_ropeJoint->GetMaxLength() + clawDelta.y);
+
+        m_ropeAnchor->SetLinearVelocity(b2Vec2(m_clawDirection.x * 3, 0.0f));
     }
 };
 
@@ -261,7 +352,7 @@ int main() {
     ShapeRenderer renderer;
 
     // Start the game state
-    State * state = new GameState(&renderer);
+    GameState * state = new GameState(&renderer);
 
     sf::Event event;    // For polling events that SFML sends us
     sf::Clock clock;    // For keeping track of time
@@ -273,7 +364,32 @@ int main() {
                 // SFML sent us a close event, so clean up
                 window.close();
             }
+            if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::Space)
+                {
+                    state->toggleClaw();
+                }
+            }
         }
+
+        b2Vec2 clawDirection(0, 0);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+        {
+            clawDirection.y += 1.0f;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+        {
+            clawDirection.y -= 1.0f;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+        {
+            clawDirection.x -= 1.0f;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+        {
+            clawDirection.x += 1.0f;
+        }
+        state->setClawDirection(clawDirection);
 
         // Update the current state with the amount of time since it was last updated
         state->update(clock.restart().asSeconds());
