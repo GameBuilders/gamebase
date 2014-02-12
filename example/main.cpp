@@ -322,7 +322,7 @@ public:
         clawJontDef.enableMotor = true;
         clawJontDef.maxMotorTorque = 500.0f;
         clawJontDef.enableLimit = true;
-        clawJontDef.lowerAngle = -1.2;
+        clawJontDef.lowerAngle = -1.2f;
         clawJontDef.upperAngle = 0;
         m_clawJoint = (b2RevoluteJoint *)m_physicsWorld->CreateJoint(&clawJontDef);
 

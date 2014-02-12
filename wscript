@@ -200,14 +200,14 @@ def build(ctx):
 
     if ctx.env['DEST_OS'] == 'linux':
         uselibs.extend(['X11', 'XRANDR', 'OPENAL', 'SNDFILE'])
-        libs.extend(['dl', 'GL'])
+        libs.extend(['dl', 'GL', 'pthread'])
     if ctx.env['DEST_OS'] == 'win32':
         stlibpath.append(sfml_node.abspath() + '/extlibs/libs-mingw/x86/')
         libs.extend(['opengl32', 'Gdi32', 'Winmm'])
 
     targets = [
-        ('game', 'main.cpp'),
-        ('example', 'example/main.cpp')
+        ('game', ctx.path.ant_glob('src/**/*.cpp')),
+        ('example_game', 'example/main.cpp')
     ]
 
     for target in targets:
@@ -228,5 +228,5 @@ def build(ctx):
 
             linkflags    = ['-static-libstdc++', '-static-libgcc'],
 
-            cxxflags     = ['-Werror', '-Wall', '-O0', '-g', '--std=gnu++11']
+            cxxflags     = ['-Werror', '-Wall', '-O3', '--std=gnu++11']
         )
