@@ -1,6 +1,7 @@
 import urllib2
 import hashlib
 import zipfile
+import tarfile
 from waflib.Task import Task
 from waflib.Build import BuildContext
 
@@ -21,7 +22,11 @@ class DownloadSource(Task):
 
 class UnzipArchive(Task):
     def run(self):
-        arc_zip = zipfile.ZipFile(self.inputs[0].abspath())
+        arc_zip = None
+        try:
+            arc_zip = zipfile.ZipFile(self.inputs[0].abspath())
+        except zipfile.BadZipfile:
+            arc_zip = tarfile.open(self.inputs[0].abspath(), 'r:gz')
         arc_zip.extractall(self.outputs[0].abspath())
 
 class SFGUIPatch(Task):
@@ -49,6 +54,16 @@ def get_deps(ctx):
             'name': 'glew',
             'url': 'https://sourceforge.net/projects/glew/files/glew/1.10.0/glew-1.10.0.zip/download',
             'hash': '43c6229d787673ac1d35ebaad52dfdcc78c8b55d13ee78d8e4d7e4a6cb72b050'
+        },
+        {
+            'name': 'jsoncpp',
+            'url': 'http://sourceforge.net/projects/jsoncpp/files/jsoncpp/0.6.0-rc2/jsoncpp-src-0.6.0-rc2-amalgamation.tar.gz/download',
+            'hash': 'e53864037fad62e8ed33cd84d7125326f048985288a6b79b9551e223d9a9da9c'
+        },
+        {
+            'name': 'pugixml',
+            'url': 'https://pugixml.googlecode.com/files/pugixml-1.2.zip',
+            'hash': '416eef2f9e1aa5780573e86b227be5b06061136ea1e13dada183dc928850acde'
         },
         {
             'name': 'sfml',
@@ -149,6 +164,27 @@ def build(ctx):
         defines      = 'GLEW_STATIC'
     )
 
+    # jsoncpp build
+    jsoncpp_node = deps_node.make_node('jsoncpp_src').make_node('jsoncpp-src-amalgamation0.6.0-rc2')
+    jsoncpp_include_node = jsoncpp_node
+    ctx.stlib(
+        source       = [jsoncpp_node.make_node('jsoncpp.cpp')],
+        target       = 'jsoncpp',
+        includes     = [jsoncpp_include_node],
+        cxxflags     = ['-w', '-O3'],
+        defines      = ['JSON_IS_AMALGAMATION']
+    )
+
+    # pugixml build
+    pugixml_node = deps_node.make_node('pugixml_src')
+    pugixml_include_node = pugixml_node.make_node('src')
+    ctx.stlib(
+        source       = pugixml_node.ant_glob('src/pugixml.cpp'),
+        target       = 'pugixml',
+        includes     = [pugixml_include_node],
+        cxxflags     = ['-w', '-O3']
+    )
+
     # SFML build
     sfml_node =  deps_node.make_node('sfml_src').make_node('SFML-2.1')
     sfml_source = sfml_node.ant_glob('src/SFML/Audio/*.cpp') + \
@@ -196,7 +232,7 @@ def build(ctx):
     libs = ['jpeg', 'sndfile']
     stlibs = []
     stlibpath = []
-    includes = [box2d_include_node, glew_include_node, sfml_node.make_node('include'), sfgui_node.make_node('include')]
+    includes = [box2d_include_node, glew_include_node, jsoncpp_include_node, pugixml_include_node, sfml_node.make_node('include'), sfgui_node.make_node('include')]
 
     if ctx.env['DEST_OS'] == 'linux':
         uselibs.extend(['X11', 'XRANDR', 'OPENAL', 'SNDFILE'])
@@ -214,7 +250,7 @@ def build(ctx):
         ctx.program(
             source       = target[1],
             target       = target[0],
-            use          = ['box2d', 'sfgui', 'sfml', 'freetype', 'glew'],
+            use          = ['box2d', 'jsoncpp', 'sfgui', 'sfml', 'freetype', 'glew'],
             uselib       = uselibs,
 
             defines      = defines,
@@ -228,5 +264,5 @@ def build(ctx):
 
             linkflags    = ['-static-libstdc++', '-static-libgcc'],
 
-            cxxflags     = ['-Werror', '-Wall', '-O3', '--std=gnu++11']
+            cxxflags     = ['-Werror', '-Wall', '-O0', '-g', '--std=gnu++11']
         )
