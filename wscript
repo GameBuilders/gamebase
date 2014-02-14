@@ -2,8 +2,8 @@ import urllib2
 import hashlib
 import zipfile
 from waflib.Task import Task
+from waflib import TaskGen
 from waflib.Build import BuildContext
-
 
 class DownloadSource(Task):
     def run(self):
@@ -62,7 +62,6 @@ def get_deps(ctx):
             'post': SFGUIPatch
         }
     ]
-
     src_nodes = {}
 
     deps_node = ctx.path.make_node('deps')
@@ -110,6 +109,30 @@ def configure(ctx):
         ctx.check_cfg(args='--cflags --libs', package='xrandr', uselib_store='XRANDR', msg='Checking for XRandR')
         ctx.check_cfg(args='--cflags --libs', package='openal', uselib_store='OPENAL', msg='Checking for OpenAL')
         ctx.check_cfg(args='--cflags --libs', package='sndfile', uselib_store='SNDFILE', msg='Checking for libsndfile')
+
+# support for .mm files
+@TaskGen.extension('.mm')
+def mm_hook(self, node):
+    "Bind the c++ file extensions to the creation of a :py:class:`waflib.Tools.cxx.cxx` instance"
+    return self.create_compiled_task('mm', node)
+ 
+class mm(Task):
+    "Compile MM files into object files"
+    run_str = '${CXX} ${ARCH_ST:ARCH} ${CXXFLAGS} ${FRAMEWORKPATH_ST:FRAMEWORKPATH} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${CXX_SRC_F}${SRC} ${CXX_TGT_F}${TGT}'
+    vars    = ['CXXDEPS'] # unused variable to depend on, just in case
+    ext_in  = ['.h'] # set the build order easily by using ext_out=['.h']
+
+# support for .m files
+@TaskGen.extension('.m')
+def mm_hook(self, node):
+    "Bind the c++ file extensions to the creation of a :py:class:`waflib.Tools.cxx.cxx` instance"
+    return self.create_compiled_task('m', node)
+ 
+class m(Task):
+    "Compile M files into object files"
+    run_str = '${CXX} ${ARCH_ST:ARCH} ${CXXFLAGS} ${FRAMEWORKPATH_ST:FRAMEWORKPATH} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${CXX_SRC_F}${SRC} ${CXX_TGT_F}${TGT}'
+    vars    = ['CXXDEPS'] # unused variable to depend on, just in case
+    ext_in  = ['.h'] # set the build order easily by using ext_out=['.h']
 
 def build(ctx):
     deps_node = ctx.path.make_node('deps')
@@ -165,6 +188,13 @@ def build(ctx):
         sfml_source = sfml_source + sfml_node.ant_glob('src/SFML/System/Win32/*.cpp') + \
                                     sfml_node.ant_glob('src/SFML/Window/Win32/*.cpp')
         sfml_includes.extend(['extlibs/headers/AL', 'extlibs/headers', 'extlibs/headers/libsndfile/windows', 'extlibs/headers/jpeg', 'extlibs/headers/libfreetype/windows'])
+    if ctx.env['DEST_OS'] == 'darwin':
+        sfml_source = sfml_source + sfml_node.ant_glob('src/SFML/System/Unix/*.cpp') + \
+                                    sfml_node.ant_glob('src/SFML/Window/OSX/*.cpp') + \
+                                    sfml_node.ant_glob('src/SFML/Window/OSX/*.mm') + \
+                                    sfml_node.ant_glob('src/SFML/Window/OSX/*.m')
+        sfml_includes.extend(['extlibs/headers/AL', 'extlibs/headers', 'extlibs/headers/libsndfile/osx', 'extlibs/headers/jpeg', 'extlibs/headers/libfreetype/osx'])
+
     sfml_includes = [sfml_node.abspath() + '/' + include for include in sfml_includes]
     sfml_includes = [freetype_include_node, glew_include_node] + sfml_includes
     ctx.stlib(
@@ -187,27 +217,33 @@ def build(ctx):
         target       = 'sfgui',
         defines      = ['SFGUI_INCLUDE_FONT', 'SFGUI_STATIC', 'SFML_STATIC', 'UNICODE', '_UNICODE', 'GLEW_STATIC'],
         includes     = sfgui_includes,
-        cxxflags     = ['--std=gnu++11', '-w', '-O3']
+        cxxflags     = ['--std=c++11', '-w', '-O3']
     )
 
     sources = ['main.cpp']
     uselibs = []
     defines = ['SFGUI_STATIC', 'SFML_STATIC', 'UNICODE', '_UNICODE', 'GLEW_STATIC']
-    libs = ['jpeg', 'sndfile']
+    libs = []
+    frameworks = []
+    frameworksPath = []
     stlibs = []
     stlibpath = []
     includes = [box2d_include_node, glew_include_node, sfml_node.make_node('include'), sfgui_node.make_node('include')]
 
     if ctx.env['DEST_OS'] == 'linux':
         uselibs.extend(['X11', 'XRANDR', 'OPENAL', 'SNDFILE'])
-        libs.extend(['dl', 'GL'])
+        libs.extend(['dl', 'GL', 'jpeg', 'sndfile'])
     if ctx.env['DEST_OS'] == 'win32':
         stlibpath.append(sfml_node.abspath() + '/extlibs/libs-mingw/x86/')
-        libs.extend(['opengl32', 'Gdi32', 'Winmm'])
+        libs.extend(['opengl32', 'Gdi32', 'Winmm', 'jpeg', 'sndfile'])
+    if ctx.env['DEST_OS'] == 'darwin':
+        stlibpath.append(sfml_node.abspath() + '/extlibs/libs-osx/lib')
+        libs.extend(['jpeg'])
+        frameworksPath.append(sfml_node.abspath() + '/extlibs/libs-osx/Frameworks')
+        frameworks.extend(['OpenAL', 'OpenGL', 'freetype', 'sndfile', 'IOKit', 'Carbon', 'AppKit', 'Foundation'])
 
     targets = [
-        ('game', 'main.cpp'),
-        ('example', 'example/main.cpp')
+        ('ben', 'example/main.cpp')
     ]
 
     for target in targets:
@@ -222,11 +258,13 @@ def build(ctx):
             includes     = includes,
 
             lib          = libs,
+            frameworkpath= frameworksPath,
+            framework    = frameworks,
 
             stlib        = stlibs,
             stlibpath    = stlibpath,
 
-            linkflags    = ['-static-libstdc++', '-static-libgcc'],
+            linkflags    = [],
 
-            cxxflags     = ['-Werror', '-Wall', '-O0', '-g', '--std=gnu++11']
+            cxxflags     = ['-Wall', '-O0', '-g', '--std=c++11']
         )
