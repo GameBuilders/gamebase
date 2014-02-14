@@ -1,6 +1,7 @@
 import urllib2
 import hashlib
 import zipfile
+from subprocess import call
 from waflib.Task import Task
 from waflib import TaskGen
 from waflib.Build import BuildContext
@@ -21,8 +22,13 @@ class DownloadSource(Task):
 
 class UnzipArchive(Task):
     def run(self):
-        arc_zip = zipfile.ZipFile(self.inputs[0].abspath())
-        arc_zip.extractall(self.outputs[0].abspath())
+        if self.env['DEST_OS'] == 'darwin':
+            call(['mkdir', self.outputs[0].abspath()])
+            call(['unzip', self.inputs[0].abspath(), '-d', self.outputs[0].abspath()])
+        else:
+            arc_zip = zipfile.ZipFile(self.inputs[0].abspath())
+            arc_zip.extractall(self.outputs[0].abspath())
+
 
 class SFGUIPatch(Task):
     def run(self):

@@ -10,7 +10,7 @@ The framework requires you download and extract a MinGW package into the folder 
 pkg-config, XRandR, X11, OpenGL, OpenAL, libjpeg, and libsndfile must be installed. This is in addition to Python 2.7 (not 3) and gcc 4.8+ in order to compile. Use your preferred package manager to get these.
 
 ## Apple OS X
-For OS X, good luck. I'd love your feedback, but I have no OS X machine to test this. I expect it to be similar to the Linux setup.
+XCode and the Command Line tools must be installed. 
 
 # Compile
 Simply run this in a console with the game framework folder as the current working directory:
