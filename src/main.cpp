@@ -11,6 +11,12 @@ int main(int argc, char ** argv) {
         return EXIT_FAILURE;
     sf::Sprite player(texture);
 
+    // Load the background
+    sf::Texture bgTexture;
+    if (!bgTexture.loadFromFile("../src/sprites/background_long.png"))
+        return EXIT_FAILURE;
+    sf::Sprite background(bgTexture);
+
     sf::Event event;    // For polling events that SFML sends us
 
     while (window.isOpen()) {
@@ -24,23 +30,26 @@ int main(int argc, char ** argv) {
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && player.getPosition().x > 0) {
 		    // left key is pressed: move our character
-		    player.move(sf::Vector2f(-0.1, 0));
+		    player.move(sf::Vector2f(-0.12, 0));
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && player.getPosition().x + player.getTexture()->getSize().x < 800) {
 		    // left key is pressed: move our character
-		    player.move(sf::Vector2f(0.1, 0));
+		    player.move(sf::Vector2f(0.12, 0));
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) && player.getPosition().y > 0) {
 		    // left key is pressed: move our character
-		    player.move(sf::Vector2f(0, -0.1));
+		    player.move(sf::Vector2f(0, -0.12));
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down) && player.getPosition().y + player.getTexture()->getSize().y < 600) {
 		    // left key is pressed: move our character
-		    player.move(sf::Vector2f(0, 0.1));
+		    player.move(sf::Vector2f(0, 0.12));
 		}
 
         // Clear the window before we start drawing to it
         window.clear();
+
+        // Draw the background
+        window.draw(background);
 
         // Draw the sprite
         window.draw(player);
