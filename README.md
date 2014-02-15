@@ -45,3 +45,14 @@ The first command checks your system for the required libraries and compilers.
 The second command downloads and extracts various libraries for static linking (e.g. SFML, freetype, etc...).
 The last command needs to be redone in order to compile any changes to the project.
 In case you get some Python exceptions, make sure you are using Python 2. Some distros call the binary python2, which you should replace the above commands with.
+
+## Usage and Customization
+
+### Build/Run Your Game
+By default, the build system will compile every file with extension `cpp` under the `src` directory. This will get compiled into `build/game` (`build/game.exe` on Windows). If you get errors about missing DLLs on windows, copy the DLL files inside of `deps/sfml_src/SFML-2.1/extlibs/bin/x86` into the same folder you run the game from or any place within your PATH.
+
+### Customize
+If you don't like this directory layout, you can customize things by modifying the [wscript](wscript) file. Look for the line starting with `targets =` for an array of build targets. You'll see that `game` globs all the files ending in `cpp` under `src` and what source files the example is from. You can add or remove whatever targets you want and where their source is located.
+
+### Adding Libraries
+There is a list of libraries under the `get_deps` function inside of [wscript](wscript). To add one, simply add a new dictionary entry to the list. The hash listed in each entry is the [SHA-256](http://en.wikipedia.org/wiki/SHA-2) hash of the package at the given URL. The hard part is getting the library to build. All of them are different, so I can not say how. Look at the `build` function for several examples of building external libraries. Afer that is figured out, don't forget to add the name of the library to the array list by `use =` near the bottom of the wscript.
