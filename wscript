@@ -1,6 +1,7 @@
 import urllib2
 import hashlib
 import zipfile
+import tarfile
 from subprocess import call
 from waflib.Task import Task
 from waflib import TaskGen
@@ -22,13 +23,16 @@ class DownloadSource(Task):
 
 class UnzipArchive(Task):
     def run(self):
-        if self.env['DEST_OS'] == 'darwin':
-            call(['mkdir', self.outputs[0].abspath()])
-            call(['unzip', self.inputs[0].abspath(), '-d', self.outputs[0].abspath()])
-        else:
+        arc_zip = None
+        try:
             arc_zip = zipfile.ZipFile(self.inputs[0].abspath())
-            arc_zip.extractall(self.outputs[0].abspath())
-
+            if self.env['DEST_OS'] == 'darwin':
+                call(['mkdir', self.outputs[0].abspath()])
+                call(['unzip', self.inputs[0].abspath(), '-d', self.outputs[0].abspath()])
+                return
+        except zipfile.BadZipfile:
+            arc_zip = tarfile.open(self.inputs[0].abspath(), 'r:gz')
+        arc_zip.extractall(self.outputs[0].abspath())
 
 class SFGUIPatch(Task):
     def run(self):
@@ -55,6 +59,16 @@ def get_deps(ctx):
             'name': 'glew',
             'url': 'https://sourceforge.net/projects/glew/files/glew/1.10.0/glew-1.10.0.zip/download',
             'hash': '43c6229d787673ac1d35ebaad52dfdcc78c8b55d13ee78d8e4d7e4a6cb72b050'
+        },
+        {
+            'name': 'jsoncpp',
+            'url': 'http://sourceforge.net/projects/jsoncpp/files/jsoncpp/0.6.0-rc2/jsoncpp-src-0.6.0-rc2-amalgamation.tar.gz/download',
+            'hash': 'e53864037fad62e8ed33cd84d7125326f048985288a6b79b9551e223d9a9da9c'
+        },
+        {
+            'name': 'pugixml',
+            'url': 'https://pugixml.googlecode.com/files/pugixml-1.2.zip',
+            'hash': '416eef2f9e1aa5780573e86b227be5b06061136ea1e13dada183dc928850acde'
         },
         {
             'name': 'sfml',
@@ -121,7 +135,7 @@ def configure(ctx):
 def mm_hook(self, node):
     "Bind the c++ file extensions to the creation of a :py:class:`waflib.Tools.cxx.cxx` instance"
     return self.create_compiled_task('mm', node)
- 
+
 class mm(Task):
     "Compile MM files into object files"
     run_str = '${CXX} ${ARCH_ST:ARCH} ${CXXFLAGS} ${FRAMEWORKPATH_ST:FRAMEWORKPATH} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${CXX_SRC_F}${SRC} ${CXX_TGT_F}${TGT}'
@@ -133,7 +147,7 @@ class mm(Task):
 def mm_hook(self, node):
     "Bind the c++ file extensions to the creation of a :py:class:`waflib.Tools.cxx.cxx` instance"
     return self.create_compiled_task('m', node)
- 
+
 class m(Task):
     "Compile M files into object files"
     run_str = '${CXX} ${ARCH_ST:ARCH} ${CXXFLAGS} ${FRAMEWORKPATH_ST:FRAMEWORKPATH} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${CXX_SRC_F}${SRC} ${CXX_TGT_F}${TGT}'
@@ -176,6 +190,27 @@ def build(ctx):
         includes     = [glew_include_node],
         cflags       = ['-w', '-O3'],
         defines      = 'GLEW_STATIC'
+    )
+
+    # jsoncpp build
+    jsoncpp_node = deps_node.make_node('jsoncpp_src').make_node('jsoncpp-src-amalgamation0.6.0-rc2')
+    jsoncpp_include_node = jsoncpp_node
+    ctx.stlib(
+        source       = [jsoncpp_node.make_node('jsoncpp.cpp')],
+        target       = 'jsoncpp',
+        includes     = [jsoncpp_include_node],
+        cxxflags     = ['-w', '-O3'],
+        defines      = ['JSON_IS_AMALGAMATION']
+    )
+
+    # pugixml build
+    pugixml_node = deps_node.make_node('pugixml_src')
+    pugixml_include_node = pugixml_node.make_node('src')
+    ctx.stlib(
+        source       = pugixml_node.ant_glob('src/pugixml.cpp'),
+        target       = 'pugixml',
+        includes     = [pugixml_include_node],
+        cxxflags     = ['-w', '-O3']
     )
 
     # SFML build
@@ -226,51 +261,51 @@ def build(ctx):
         cxxflags     = ['--std=c++11', '-w', '-O3']
     )
 
-    sources = ['main.cpp']
     uselibs = []
     defines = ['SFGUI_STATIC', 'SFML_STATIC', 'UNICODE', '_UNICODE', 'GLEW_STATIC']
     libs = []
     frameworks = []
-    frameworksPath = []
+    frameworks_path = []
     stlibs = []
     stlibpath = []
-    includes = [box2d_include_node, glew_include_node, sfml_node.make_node('include'), sfgui_node.make_node('include')]
+    includes = [box2d_include_node, glew_include_node, jsoncpp_include_node, pugixml_include_node, sfml_node.make_node('include'), sfgui_node.make_node('include')]
 
     if ctx.env['DEST_OS'] == 'linux':
         uselibs.extend(['X11', 'XRANDR', 'OPENAL', 'SNDFILE'])
-        libs.extend(['dl', 'GL', 'jpeg', 'sndfile'])
+        libs.extend(['dl', 'GL', 'jpeg', 'pthread'])
     if ctx.env['DEST_OS'] == 'win32':
         stlibpath.append(sfml_node.abspath() + '/extlibs/libs-mingw/x86/')
         libs.extend(['opengl32', 'Gdi32', 'Winmm', 'jpeg', 'sndfile'])
     if ctx.env['DEST_OS'] == 'darwin':
         stlibpath.append(sfml_node.abspath() + '/extlibs/libs-osx/lib')
         libs.extend(['jpeg'])
-        frameworksPath.append(sfml_node.abspath() + '/extlibs/libs-osx/Frameworks')
+        frameworks_path.append(sfml_node.abspath() + '/extlibs/libs-osx/Frameworks')
         frameworks.extend(['OpenAL', 'OpenGL', 'freetype', 'sndfile', 'IOKit', 'Carbon', 'AppKit', 'Foundation'])
 
     targets = [
-        ('ben', 'example/main.cpp')
+        ('game', ctx.path.ant_glob('src/**/*.cpp')),
+        ('example_game', 'example/main.cpp')
     ]
 
     for target in targets:
         ctx.program(
-            source       = target[1],
-            target       = target[0],
-            use          = ['box2d', 'sfgui', 'sfml', 'freetype', 'glew'],
-            uselib       = uselibs,
+            source        = target[1],
+            target        = target[0],
+            use           = ['box2d', 'jsoncpp', 'pugixml', 'sfgui', 'sfml', 'freetype', 'glew'],
+            uselib        = uselibs,
 
-            defines      = defines,
+            defines       = defines,
 
-            includes     = includes,
+            includes      = includes,
 
-            lib          = libs,
-            frameworkpath= frameworksPath,
-            framework    = frameworks,
+            lib           = libs,
+            frameworkpath = frameworks_path,
+            framework     = frameworks,
 
-            stlib        = stlibs,
-            stlibpath    = stlibpath,
+            stlib         = stlibs,
+            stlibpath     = stlibpath,
 
-            linkflags    = [],
+            linkflags     = [],
 
-            cxxflags     = ['-Wall', '-O0', '-g', '--std=c++11']
+            cxxflags      = ['-Wall', '-O0', '-g', '--std=c++11']
         )
