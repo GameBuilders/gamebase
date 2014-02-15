@@ -398,6 +398,38 @@ public:
         while (m_accumTime > worldTimeStep)
         {
             m_physicsWorld->Step(worldTimeStep, 10, 10);
+
+            // Update Gameplayer Data
+
+            m_clawJoint->SetMotorSpeed(m_openClaw ? -4.0f : 4.0f);
+
+            b2Vec2 clawDelta = m_clawDirection;
+            clawDelta *= worldTimeStep;
+            clawDelta *= 3;
+            m_ropeJoint->SetMaxLength(m_ropeJoint->GetMaxLength() + clawDelta.y);
+            // Ensure the rope is between specific lengths
+            if (m_ropeJoint->GetMaxLength() < 0.1f)
+            {
+                m_ropeJoint->SetMaxLength(0.1f);
+            }
+            if (m_ropeJoint->GetMaxLength() > 10.0f)
+            {
+                m_ropeJoint->SetMaxLength(10.0f);
+            }
+
+            b2Vec2 achorPos = m_ropeAnchor->GetPosition();
+            achorPos.x += clawDelta.x;
+            m_ropeAnchor->SetTransform(achorPos, 0.0f);
+            // Ensure the anchor does not go out of bounds
+            if (achorPos.x < 0.1f)
+            {
+                m_ropeAnchor->SetTransform(b2Vec2(0.1f, achorPos.y), 0.0f);
+            }
+            if (achorPos.x > 15.9f)
+            {
+                m_ropeAnchor->SetTransform(b2Vec2(15.9f, achorPos.y), 0.0f);
+            }
+
             m_accumTime -= (double)worldTimeStep;
         }
 
@@ -426,37 +458,6 @@ public:
             bodyList = bodyList->GetNext();
         }
 
-        // Update Gameplayer Data
-
-        m_clawJoint->SetMotorSpeed(m_openClaw ? -4.0f : 4.0f);
-
-        b2Vec2 clawDelta = m_clawDirection;
-        clawDelta *= dt;
-        clawDelta *= 3;
-        m_ropeJoint->SetMaxLength(m_ropeJoint->GetMaxLength() + clawDelta.y);
-        // Ensure the rope is between specific lengths
-        if (m_ropeJoint->GetMaxLength() < 0.1f)
-        {
-            m_ropeJoint->SetMaxLength(0.1f);
-        }
-        if (m_ropeJoint->GetMaxLength() > 10.0f)
-        {
-            m_ropeJoint->SetMaxLength(10.0f);
-        }
-
-        b2Vec2 achorPos = m_ropeAnchor->GetPosition();
-        achorPos.x += clawDelta.x;
-        m_ropeAnchor->SetTransform(achorPos, 0.0f);
-        // Ensure the anchor does not go out of bounds
-        if (achorPos.x < 0.1f)
-        {
-            m_ropeAnchor->SetTransform(b2Vec2(0.1f, achorPos.y), 0.0f);
-        }
-        if (achorPos.x > 15.9f)
-        {
-            m_ropeAnchor->SetTransform(b2Vec2(15.9f, achorPos.y), 0.0f);
-        }
-
         std::stringstream scoreString;
         scoreString << getBallInGoalCount() << "/" << BALL_COUNT;
         m_scoreText->text = scoreString.str();
@@ -472,6 +473,7 @@ int main() {
     sf::ContextSettings settings;
     settings.antialiasingLevel = 8;
     sf::RenderWindow window(sf::VideoMode(800, 600), "Crane Game!", sf::Style::Default, settings);
+    window.setKeyRepeatEnabled(false);
 
     ShapeRenderer renderer;
 
