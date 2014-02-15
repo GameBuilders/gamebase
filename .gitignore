@@ -1,0 +1,5 @@
+build/
+deps/
+mingw32/
+.lock-waf_win32_build
+waf-1.7.15-9c6c439a6416a92b3e844736c4ef3c7b/
