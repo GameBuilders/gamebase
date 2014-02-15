@@ -9,7 +9,7 @@ int main(int argc, char ** argv) {
     sf::Texture texture;
     if (!texture.loadFromFile("../src/sprites/gundam_flying_up.png"))
         return EXIT_FAILURE;
-    sf::Sprite sprite(texture);
+    sf::Sprite player(texture);
 
     sf::Event event;    // For polling events that SFML sends us
 
@@ -22,17 +22,32 @@ int main(int argc, char ** argv) {
             }
         }
 
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
+		    // left key is pressed: move our character
+		    player.move(sf::Vector2f(-0.25, 0));
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+		    // left key is pressed: move our character
+		    player.move(sf::Vector2f(0.25, 0));
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+		    // left key is pressed: move our character
+		    player.move(sf::Vector2f(0, -0.25));
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
+		    // left key is pressed: move our character
+		    player.move(sf::Vector2f(0, 0.25));
+		}
+
         // Clear the window before we start drawing to it
         window.clear();
 
         // Draw the sprite
-        window.draw(sprite);
+        window.draw(player);
 
         // Notify the window that we're ready to render
         window.display();
     }
-
-    // movement offset - sprite.move(sf::Vector2f(5, 10));
 
     return 0;
 }
