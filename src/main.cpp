@@ -22,21 +22,21 @@ int main(int argc, char ** argv) {
             }
         }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && player.getPosition().x > 0) {
 		    // left key is pressed: move our character
-		    player.move(sf::Vector2f(-0.25, 0));
+		    player.move(sf::Vector2f(-0.1, 0));
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && player.getPosition().x + player.getTexture()->getSize().x < 800) {
 		    // left key is pressed: move our character
-		    player.move(sf::Vector2f(0.25, 0));
+		    player.move(sf::Vector2f(0.1, 0));
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) && player.getPosition().y > 0) {
 		    // left key is pressed: move our character
-		    player.move(sf::Vector2f(0, -0.25));
+		    player.move(sf::Vector2f(0, -0.1));
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down) && player.getPosition().y + player.getTexture()->getSize().y < 600) {
 		    // left key is pressed: move our character
-		    player.move(sf::Vector2f(0, 0.25));
+		    player.move(sf::Vector2f(0, 0.1));
 		}
 
         // Clear the window before we start drawing to it
