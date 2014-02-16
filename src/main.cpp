@@ -22,7 +22,7 @@ void render(sf::RenderWindow& window){
         sf::Sprite _bullet;
         _bullet.setTexture(bulletTexture);
         game.bullet[i].change_position(game.bullet[i].get_x(), game.bullet[i].get_y() - 0.05);
-        _bullet.setPosition(game.bullet[i].get_x(), game.bullet[i].get_y() - 0.05);
+        _bullet.setPosition(game.bullet[i].get_x(), game.bullet[i].get_y());
         window.draw(_bullet);
     }
 
@@ -57,6 +57,11 @@ int main(int argc, char ** argv) {
     // Create the SFML window
     sf::Vector2i screenDimensions(800, 600);
     sf::RenderWindow window(sf::VideoMode(screenDimensions.x, screenDimensions.y), "Zero Requiem");
+
+    sf::Font font;
+    if (!font.loadFromFile("../src/DejaVuSans.ttf"))
+        return EXIT_FAILURE;
+    sf::Text text("", font, 30);
 
     // Load player sprite to display
     if (!playerTexture.loadFromFile("../src/sprites/gundam_flying_up.png"))
@@ -96,9 +101,13 @@ int main(int argc, char ** argv) {
     sf::Clock global_clock; // global clock that is only reset in the end
 
     sf::View view;
-
     view.reset(sf::FloatRect(0, 0, screenDimensions.x, screenDimensions.y));
     view.setViewport(sf::FloatRect(0, 0, 0.6f, 1.0f));
+    // view.setSize(screenDimensions.x * 3 / 5, screenDimensions.y);
+
+	sf::View view2;
+	view2.setViewport(sf::FloatRect(0.6f, 0, 1.0f, 1.0f));
+    // view2.setSize(screenDimensions.x * 2 / 5, screenDimensions.y);
 
     sf::Vector2f position(bgTexture.getSize().x - screenDimensions.x / 2, backgroundHeight - screenDimensions.y / 2);
     game.player.change_position(bgTexture.getSize().x - screenDimensions.x / 2 - playerTexture.getSize().x / 2, backgroundHeight - screenDimensions.y / 2 + 100);
@@ -158,6 +167,11 @@ int main(int argc, char ** argv) {
 
         // Render the window!
         render(window);
+
+        // Display coordinates of player
+        window.setView(view2);
+        text.setString(std::to_string(game.player.get_x()) + ", " + std::to_string(game.player.get_y()));
+        window.draw(text);
 
         // Notify the window that we're ready to render
         window.display();
