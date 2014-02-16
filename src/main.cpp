@@ -3,7 +3,7 @@
 // Program entry point
 int main(int argc, char ** argv) {
     // Create the SFML window
-    sf::Vector2i screenDimensions(800, 600);
+    sf::Vector2i screenDimensions(780, 600);
     sf::RenderWindow window(sf::VideoMode(screenDimensions.x, screenDimensions.y), "Zero Requiem");
 
     // Load a sprite to display
