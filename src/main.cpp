@@ -18,8 +18,6 @@ void render(sf::RenderWindow& window){
     int max_b = game.bullet.size();
     int max_bp = game.player_bullet.size();
 
-    // cout << "render " << max_bp << endl;
-
     for (int i = 0; i < max_b; i++){
         sf::Sprite _bullet;
         _bullet.setTexture(bulletTexture);
@@ -35,8 +33,6 @@ void render(sf::RenderWindow& window){
         game.player_bullet[j].change_position(game.player_bullet[j].get_x(), game.player_bullet[j].get_y() - 0.05);
         _bullet_p.setPosition(game.player_bullet[j].get_x(), game.player_bullet[j].get_y());
         window.draw(_bullet_p);
-
-        // cout << game.player_bullet.back().get_y() << endl;
     }
 
     for (int k = 0; k < max_e; k++){

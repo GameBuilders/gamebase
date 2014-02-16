@@ -4,6 +4,7 @@
 // local includes
 #include "objects.h"
 #include <algorithm>
+#include <cmath>
 
 using namespace std;
 

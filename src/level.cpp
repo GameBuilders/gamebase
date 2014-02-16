@@ -86,14 +86,14 @@ void Level::add_bullet_player(){   //add bullet to player
 
         player_bullet.back().change_position(player.get_x()+37/4,player.get_y()+0.005);
 
-        player_bullet.back().change_delta(0, -0.5);// directly up
+        player_bullet.back().change_delta(0, -0.5); // directly up
     }
 }
 
 void Level::move_stuff(sf::Time cur_time){
     //first, move bullets
     for (int i = 0; i < max_bullet_size; i++){
-        if ((bullet[i].get_x() < -30)||(bullet[i].get_x() > max_width+10)){
+        if (bullet[i].get_x() < -30 || bullet[i].get_x() > max_width+10 || std::abs(bullet[i].get_y() - player.get_y()) > 600) {
             std::swap(bullet[i], bullet.back());
             bullet.pop_back();
             max_bullet_size = bullet.size();
@@ -104,30 +104,30 @@ void Level::move_stuff(sf::Time cur_time){
     max_bullet_size = bullet.size();
 
     //Second, move player bullets
-    for (unsigned int k = 0; k < player_bullet.size(); k++){
-        if ((player_bullet[k].get_x() < -30)||(player_bullet[k].get_x() > max_width+10)){
-            std::swap(player_bullet[k], player_bullet.back());
+    for (unsigned int j = 0; j < player_bullet.size(); j++){
+        if (player_bullet[j].get_x() < -30 || player_bullet[j].get_x() > max_width+10 || std::abs(player_bullet[j].get_y() - player.get_y()) > 600) {
+            std::swap(player_bullet[j], player_bullet.back());
             player_bullet.pop_back();
         }
         else
-            player_bullet[k].move_bullet();
+            player_bullet[j].move_bullet();
     }
 
     //Third, enemies
-    for (int j = 0; j < max_enemy_size; j++){
-        if ((enemy[j].get_x() < -30)||(enemy[j].get_x() > max_width+10)){
-            enemy[j].entry_flag = 0;
-            std::swap(enemy[j], enemy.back());
+    for (int k = 0; k < max_enemy_size; k++){
+        if (enemy[k].get_x() < -30 || enemy[k].get_x() > max_width+10 || std::abs(enemy[k].get_y() - player.get_y()) > 600) {
+            enemy[k].entry_flag = 0;
+            std::swap(enemy[k], enemy.back());
             enemy.pop_back();
             max_enemy_size = enemy.size();
         }
         else { //still in screen range
-            if (cur_time >= enemy[j].obj_timer){
-                enemy[j].entry_flag = 1;
-                enemy[j].move_object();
-                if (enemy[j].bullet_flag == true){
-                    add_bullets(enemy[j].bullet_num, enemy[j].B_type, enemy[j].en_x, enemy[j].en_y, j);
-                    enemy[j].bullet_flag = false;
+            if (cur_time >= enemy[k].obj_timer){
+                enemy[k].entry_flag = 1;
+                enemy[k].move_object();
+                if (enemy[k].bullet_flag == true){
+                    add_bullets(enemy[k].bullet_num, enemy[k].B_type, enemy[k].en_x, enemy[k].en_y, k);
+                    enemy[k].bullet_flag = false;
                 }
             }
         }
