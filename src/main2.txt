@@ -1,0 +1,152 @@
+#include <cstdlib>
+#include <sstream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <SFML/Graphics.hpp>
+#include <Box2D/Box2D.h>
+//wargaming(WT)
+//highvoltage
+//local includes
+#include "bullet.h"
+#include "objects.h"
+#include "level.h"
+
+//constants:
+//1.screen paras
+int max_width = 800;
+int max_height = 600;
+
+//stores all the acutal game data
+Level game;
+
+//other constants
+
+void render(sf::RenderWindow& window){
+
+    int max_e = game.enemy.size();
+    int max_b = game.bullet.size();
+    int max_bp = game.player_bullet.size();
+
+    //render bullets first
+    sf::Texture texture;
+    texture.loadFromFile("../src/bullet.png");
+
+    for (int i = 0; i < max_b; i++){
+        sf::Sprite _bullet;
+        _bullet.setTexture(texture);
+        //_bullet.setTextureRect(sf::IntRect(10, 10, 50, 30));
+        _bullet.setPosition(game.bullet[i].get_x(), game.bullet[i].get_y());
+        //_bullet.setColor(sf::Color(100, 250, 50));
+        window.draw(_bullet);
+    }
+
+    //render player bullets
+    for (int k = 0; k < max_bp; k++){
+        sf::Sprite _bullet_p;
+        _bullet_p.setTexture(texture);
+        //_bullet_p.setTextureRect(sf::IntRect(10, 10, 50, 30));
+        _bullet_p.setPosition(game.player_bullet[k].get_x(), game.player_bullet[k].get_y());
+        //_bullet_p.setColor(sf::Color(100, 250, 50));
+        window.draw(_bullet_p);
+    }
+
+    //render enemies
+    sf::Texture e_texture;
+    e_texture.loadFromFile("../src/enemy.png");
+
+    for (int j = 0; j < max_e; j++){
+        if (game.enemy[j].entry_flag == 1){
+            sf::Sprite _enemy;
+            _enemy.setTexture(e_texture);
+            //_enemy.setTextureRect(sf::IntRect(10, 10, 50, 30));
+            _enemy.setPosition(game.enemy[j].get_x(), game.enemy[j].get_y());
+            //_enemy.setColor(sf::Color(100, 250, 50));
+            window.draw(_enemy);
+        }
+    }
+
+    //render the player last
+    sf::Sprite _player;
+    _player.setTexture(e_texture);
+    //_player.setTextureRect(sf::IntRect(10, 10, 50, 30));
+    _player.setPosition(game.player.get_x(), game.player.get_y());
+    //_player.setColor(sf::Color(100, 250, 50));
+    window.draw(_player);
+
+}
+
+// Program entry point
+int main(int argc, char ** argv) {
+    // Create the SFML window
+    sf::RenderWindow window(sf::VideoMode(max_width, max_height), "Zero");
+    sf::Event event;    // For polling events that SFML sends us
+
+    //The entire level is here:
+    game.add_enemy("test", sf::seconds(0.5f),
+                      0, 100, 0.1, 0, 20, "cir", 10);
+    game.add_enemy("test", sf::seconds(1.0f),
+                      0, 200, 0.1, 0, 20, "burst", 10);
+    game.add_enemy("test", sf::seconds(1.5f),
+                      0, 300, 0.1, 0, 20, "bomb", 10);
+    game.add_enemy("test", sf::seconds(2.0f),
+                      0, 400, 0.1, 0, 20, "cir", 10);
+    game.add_enemy("test", sf::seconds(2.5f),
+                      0, 50, 0.1, 0, 20, "dir_bomb", 10);
+
+    //level end;
+
+    //clocks for trigger all the stuff
+    sf::Clock global_clock;//global clock that only gets reseted in the end
+
+    //game loop
+    while (window.isOpen()) {
+        // Process any events sent by SFML since the last frame
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                // SFML sent us a close event, so clean up
+                window.close();
+            }
+            if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard:: LControl){
+                    if (game.player.fire == false)
+                        game.player.fire = true;
+                    else
+                        game.player.fire = false;
+                }
+            }
+
+        }
+
+        float player_x = 0;
+        float player_y = 0;
+
+        if ( (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))&&(game.player.get_y() <= 580) )
+            player_y += 0.35f;
+        if ( (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))&&(game.player.get_y() >= 3) )
+            player_y -= 0.35f;
+        if ( (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))&&(game.player.get_x() >= 3) )
+            player_x -= 0.35f;
+        if ( (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))&&(game.player.get_x() <= 780) )
+            player_x += 0.35f;
+
+        game.player.change_position( (game.player.get_x()+player_x), (game.player.get_y()+player_y));
+        game.add_bullet_player();
+
+        game.damage_judging();
+        game.move_stuff(global_clock.getElapsedTime());
+
+        // Clear the window before we start drawing to it
+        window.clear();
+
+        //render the window!
+        render(window);
+
+        // Notify the window that we're ready to render
+        window.display();
+    }
+
+    return 0;
+}
+
