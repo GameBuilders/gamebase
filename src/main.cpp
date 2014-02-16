@@ -75,7 +75,7 @@ int main(int argc, char ** argv) {
         return EXIT_FAILURE;
    	bgTexture.setRepeated(true);
     sf::Sprite background(bgTexture);
-    size_t backgroundHeight = 12000;
+    size_t backgroundHeight = 1800;
    	background.setTextureRect(sf::IntRect(0,0,800,backgroundHeight));
     background.setScale((float) screenDimensions.x / bgTexture.getSize().x, 1.0f);
 

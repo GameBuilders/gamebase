@@ -97,7 +97,8 @@ void Level::move_stuff(sf::Time cur_time){
     //first, move bullets
     for (int i = 0; i < max_bullet_size; i++){
         if ((bullet[i].get_x() > max_width+10)||(bullet[i].get_y() > max_width+10)){
-            bullet.erase(bullet.begin()+i);
+            std::swap(bullet[i], bullet.back());
+            bullet.pop_back();
             max_bullet_size = bullet.size();
         }
         else
@@ -108,7 +109,8 @@ void Level::move_stuff(sf::Time cur_time){
     //Second, move player bullets
     for (unsigned int k = 0; k < player_bullet.size(); k++){
         if ((player_bullet[k].get_x() > max_width+10)||(player_bullet[k].get_y() > max_width+10)){
-            player_bullet.erase(player_bullet.begin()+k);
+            std::swap(player_bullet[k], player_bullet.back());
+            player_bullet.pop_back();
         }
         else
             player_bullet[k].move_bullet();
@@ -118,10 +120,11 @@ void Level::move_stuff(sf::Time cur_time){
     for (int j = 0; j < max_enemy_size; j++){
         if ((enemy[j].get_x() > max_width+10)||(enemy[j].get_y() > max_width+10)){
             enemy[j].entry_flag = 0;
-            enemy.erase(enemy.begin()+j);
+            std::swap(enemy[j], enemy.back());
+            enemy.pop_back();
             max_enemy_size = enemy.size();
         }
-        else{//still in screen range
+        else { //still in screen range
             if (cur_time >= enemy[j].obj_timer){
                 enemy[j].entry_flag = 1;
                 enemy[j].move_object();
@@ -145,7 +148,8 @@ void Level::damage_judging(){
             float p_y = player_bullet[i].get_y();
             float r = player_b_radius;
             if ( (e_x < p_x + r) && (e_x > p_x - r) && (e_y < p_y + r) && (e_x > p_x - r) ){
-                enemy.erase(enemy.begin()+k);
+                std::swap(enemy[k], enemy.back());
+                enemy.pop_back();
                 max_enemy_size = enemy.size();
             }
         }

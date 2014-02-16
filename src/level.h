@@ -3,6 +3,7 @@
 
 // local includes
 #include "objects.h"
+#include <algorithm>
 
 using namespace std;
 
