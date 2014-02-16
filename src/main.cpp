@@ -18,6 +18,8 @@ void render(sf::RenderWindow& window){
     int max_b = game.bullet.size();
     int max_bp = game.player_bullet.size();
 
+    // cout << "render " << max_bp << endl;
+
     for (int i = 0; i < max_b; i++){
         sf::Sprite _bullet;
         _bullet.setTexture(bulletTexture);
@@ -33,6 +35,8 @@ void render(sf::RenderWindow& window){
         game.player_bullet[j].change_position(game.player_bullet[j].get_x(), game.player_bullet[j].get_y() - 0.05);
         _bullet_p.setPosition(game.player_bullet[j].get_x(), game.player_bullet[j].get_y());
         window.draw(_bullet_p);
+
+        // cout << game.player_bullet.back().get_y() << endl;
     }
 
     for (int k = 0; k < max_e; k++){
@@ -80,7 +84,7 @@ int main(int argc, char ** argv) {
         return EXIT_FAILURE;
    	bgTexture.setRepeated(true);
     sf::Sprite background(bgTexture);
-    size_t backgroundHeight = 1800;
+    size_t backgroundHeight = 12000;
    	background.setTextureRect(sf::IntRect(0,0,800,backgroundHeight));
     background.setScale((float) screenDimensions.x / bgTexture.getSize().x, 1.0f);
 
@@ -165,13 +169,19 @@ int main(int argc, char ** argv) {
         // Draw the background
         window.draw(background);
 
-        // Render the window!
+        // Render major elements of the window!
         render(window);
 
         // Display coordinates of player
         window.setView(view2);
         text.setString(std::to_string(game.player.get_x()) + ", " + std::to_string(game.player.get_y()));
         window.draw(text);
+
+	    for (unsigned int j = 0; j < game.enemy.size(); j++){
+	        sf::Text text2(std::to_string(game.enemy[j].get_x()) + ", " + std::to_string(game.enemy[j].get_y()), font, 30);
+	        text2.setPosition(sf::Vector2f(0, j*30));
+	        window.draw(text2);
+	    }
 
         // Notify the window that we're ready to render
         window.display();

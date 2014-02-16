@@ -1,7 +1,6 @@
 #include "level.h"
 
 const int max_width = 800;
-const int max_height = 600;
 
 float player_b_radius = 10;
 sf::Clock player_clock;
@@ -83,20 +82,18 @@ void Level::add_bullet_player(){   //add bullet to player
         //player.fire = false;
         player_clock.restart();
 
-        int orig_size_p = player_bullet.size();
-        player_bullet.resize(orig_size_p+5);
-        for (unsigned int j = orig_size_p; j < player_bullet.size(); j++){
-            player_bullet[j].change_position(player.get_x(),player.get_y()+0.005*j);
+        player_bullet.resize(player_bullet.size() + 1);
 
-            player_bullet[j].change_delta(0, -0.5);// directly down
-        }
+        player_bullet.back().change_position(player.get_x()+37/4,player.get_y()+0.005);
+
+        player_bullet.back().change_delta(0, -0.5);// directly up
     }
 }
 
 void Level::move_stuff(sf::Time cur_time){
     //first, move bullets
     for (int i = 0; i < max_bullet_size; i++){
-        if ((bullet[i].get_x() > max_width+10)||(bullet[i].get_y() > max_width+10)){
+        if ((bullet[i].get_x() < -30)||(bullet[i].get_x() > max_width+10)){
             std::swap(bullet[i], bullet.back());
             bullet.pop_back();
             max_bullet_size = bullet.size();
@@ -108,7 +105,7 @@ void Level::move_stuff(sf::Time cur_time){
 
     //Second, move player bullets
     for (unsigned int k = 0; k < player_bullet.size(); k++){
-        if ((player_bullet[k].get_x() > max_width+10)||(player_bullet[k].get_y() > max_width+10)){
+        if ((player_bullet[k].get_x() < -30)||(player_bullet[k].get_x() > max_width+10)){
             std::swap(player_bullet[k], player_bullet.back());
             player_bullet.pop_back();
         }
@@ -118,7 +115,7 @@ void Level::move_stuff(sf::Time cur_time){
 
     //Third, enemies
     for (int j = 0; j < max_enemy_size; j++){
-        if ((enemy[j].get_x() > max_width+10)||(enemy[j].get_y() > max_width+10)){
+        if ((enemy[j].get_x() < -30)||(enemy[j].get_x() > max_width+10)){
             enemy[j].entry_flag = 0;
             std::swap(enemy[j], enemy.back());
             enemy.pop_back();
