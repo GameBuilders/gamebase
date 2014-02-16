@@ -36,6 +36,9 @@ class Level
 
         std::vector<Bullet> player_bullet;
 
+        bool game_over;
+        bool super_gm;
+
         Object player;
 };
 #endif // EPNG_H

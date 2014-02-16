@@ -2,7 +2,11 @@
 
 const int max_width = 800;
 
-float player_b_radius = 10;
+float player_b_radius = 3;
+float enemy_b_radius = 5;
+float player_damage = 2.5;
+sf::Time player_attack_interval = sf::seconds(0.15f);
+
 sf::Clock player_clock;
 
 Level::Level(){
@@ -14,6 +18,8 @@ Level::Level(){
     player_bullet.resize(0);
 
     player.change_position(400, 500);
+    game_over = false;
+    super_gm = false;
 }
 
 Level::~Level(){
@@ -24,7 +30,7 @@ Level::~Level(){
 //    "n"
 //    "Boss"
 
-//ONLY add enemy one by one!
+//ONLY add enemies one by one!
 void Level::add_enemy(string type, sf::Time entry_time,
         float en_x, float en_y, float del_x, float del_y, int bullet_num, string B_type, int hp){
 
@@ -78,7 +84,7 @@ void Level::add_bullets(int bullet_num, string B_type, float x, float y, int ind
     }
 }
 void Level::add_bullet_player(){   //add bullet to player
-    if ( (player_clock.getElapsedTime() >= sf::seconds(0.1f))&&(player.fire == true) ){
+    if ( (player_clock.getElapsedTime() >= player_attack_interval)&&(player.fire == true) ){
         //player.fire = false;
         player_clock.restart();
 
@@ -115,7 +121,7 @@ void Level::move_stuff(sf::Time cur_time){
 
     //Third, enemies
     for (int k = 0; k < max_enemy_size; k++){
-        if (enemy[k].get_x() < -30 || enemy[k].get_x() > max_width+10 || std::abs(enemy[k].get_y() - player.get_y()) > 600) {
+        if (enemy[k].get_x() < -30 || enemy[k].get_x() > max_width+10 || enemy[k].get_y() - player.get_y() > 1800) {
             enemy[k].entry_flag = 0;
             std::swap(enemy[k], enemy.back());
             enemy.pop_back();
@@ -144,11 +150,26 @@ void Level::damage_judging(){
             float p_x = player_bullet[i].get_x();
             float p_y = player_bullet[i].get_y();
             float r = player_b_radius;
-            if ( (e_x < p_x + r) && (e_x > p_x - r) && (e_y < p_y + r) && (e_x > p_x - r) ){
-                std::swap(enemy[k], enemy.back());
-                enemy.pop_back();
-                max_enemy_size = enemy.size();
+            if ( (e_x < p_x + r) && (e_x > p_x - r) && (e_y < p_y + r) && (e_y > p_y - r) ){
+                enemy[k].hp = enemy[k].hp - player_damage;
+                if (enemy[k].hit_enemy() == true){
+                    std::swap(enemy[k], enemy.back());
+                    enemy.pop_back();
+                    max_enemy_size--;
+                }
             }
         }
+    }
+
+    //Second, enemy to player
+    for (unsigned int l = 0; l < bullet.size(); l++){
+            float pl_x = player.get_x();
+            float pl_y = player.get_y();
+            float eb_x = bullet[l].get_x();
+            float eb_y = bullet[l].get_y();
+            float rb = enemy_b_radius;
+            if ( (pl_x < eb_x + rb) && (pl_x > eb_x - rb) && (pl_y < eb_y + rb) && (pl_y > eb_y - rb) ){
+                game_over = true;
+            }
     }
 }
